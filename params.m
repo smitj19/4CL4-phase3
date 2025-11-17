@@ -45,12 +45,12 @@ disp(rank(Pc)) %TASK 2
 
 ps_1 = [-10+10*1i -10-10*1i -15 -18];
 ps_2 = 0.5*ps_1;
-ps_3 = 1.3*ps_1;
+ps_3 = [-8 -10 -12 -14];
+ps_4 = 1.3*ps_1;
 
 %%%%%%MODIFY FOR TASK 5%%%%%%%
-ps = ps_2;
+ps = ps_4;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 Kf = place(A, B, ps);
 sys_poles2 = eig(A - B*Kf);
 disp(sys_poles2) %Confirm stability
-
