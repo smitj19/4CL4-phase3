@@ -1,71 +1,75 @@
-clear;
+P =Ph; %= [0.0341; 0.0150; 0.0618; 0.0012; 1.8664; 0.0158];
 
-x0_up_1 = [0; pi; 0; 0];
-x0_up_2 = [0; 0.95*pi; 0; 0];
-x0_up_3 = [0.1; pi; 0; 0];
-x0_up_4 = [0; pi; 0; 0];
+p1 = P(1);  % J1_bar
+p2 = P(2);  % J2_bar
+p3 = P(3);  % b1 + kt^2/R
+p4 = P(4);  % b2
+p5 = P(5);  % m2*g*l2
+p6 = P(6);  % m2*L1
 
-x0_down_1 = [0; 0; 0; 0];
-x0_down_2 = [10; 10; 0; 0];
-x0_down_3 = [0; 0.1; 0; 0];
-x0_down_4 = [-0.1; 0; 0; 0];
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-X0= x0_up_1;
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-q20 = X0(2); 
+% Choose equilibrium: q20 = 0 for DOWN, q20 = pi for UP
+q20 = pi;                     % <-- set to 0 or pi
+c   = cos(q20);
 
-kp=4;
-Ts = 0.001;
-m1=0.095; 
-m2=0.024;
-L1= 0.1;
-L2= 0.129;
-l1 =L1/2;
-l2 =L2/2;
-g= 9.81;
-J1 = (1/12)*m1*L1^2;
-J2 = (1/12)*m2*L2^2;
-Rm=8.4;
-km= 0.042;
-b1= 0.001;
-b2 = 1e-5;
-Jb1 = J1+m1*l1^2+m2*L1^2;
-Jb2 = J2+m2*l2^2;
+% M, F, K from the lab handout
+M = [p1,    p6*c;
+     p6*c,  p2   ];
+
+F = [p3, 0;
+     0,  p4];
+
+K = [0,     0;
+     0,  p5*c];
+
+detM = p1*p2 - (p6*c)^2;
+Minv = (1/detM) * [ p2,     -p6*c;
+                   -p6*c,    p1   ];
+
+A = [ 0 0  1 0;
+      0 0  0 1;
+     -(Minv*K),  -(Minv*F) ];
+
+B = [ 0;
+      0;
+      Minv*[1;0] ];
+
+% --- Controllability matrix Pc = [B, A*B, A^2*B, A^3*B] ---
+AB   = A*B;
+A2B  = A*AB;
+A3B  = A*A2B;
+Pc   = [B, AB, A2B, A3B];    % 4×4 for this SISO 4-state model
 %%
-%--------PHASE 3 STUFF----------
-P = load('ph.mat').Ph;
-M = [P(1) P(6)*cos(q20); P(6)*cos(q20) P(2)];
-F = [P(3) 0; 0 P(4)];
-K = [0 0; 0 P(5)*cos(q20)];
-T = [1; 0];
+% Parameters
+P =Ph; %= [0.0341; 0.0150; 0.0618; 0.0012; 1.8664; 0.0158];
+p1=P(1); p2=P(2); p3=P(3); p4=P(4); p5=P(5); p6=P(6);
 
-a11 = [0 0; 0 0];
-a12 = [1 0; 0 1];
-a21 = -inv(M)*K;
-a22 = -inv(M)*F;
-A = [a11 a12; a21 a22];
-b1 = [0; 0];
-b2 = inv(M)*T;
-B = [b1; b2];
-sys_poles = eig(A);
-disp(sys_poles) %TASK 1
 
-%If real -ve poles -> stable, if real +ve poles -> unstable
-Pc = zeros(size(A,1), size(A,2));
-for N = 1:size(A,1)
-Pc(N,:) = A^(N-1)*B;
-end
-disp(rank(Pc)) %TASK 2
+c = cos(0);
+M = [p1, p6*c; p6*c, p2];
+F = [p3, 0;    0,    p4];
+K = [0,  0;    0, p5*c];
 
-%Sys is controllable if rank = 4
+Minv = inv(M);
+A_down = [zeros(2), eye(2); -Minv*K, -Minv*F];
+B_down = [zeros(2,1); Minv*[1;0]];
 
-ps_1 = [-10+10*1i -10-10*1i -15 -18];
-ps_2 = 0.5*ps_1;
-ps_3 = 1.3*ps_1;
+% Desired poles
+ps = [-10+10j, -10-10j, -15, -18];
 
-%%%%%%MODIFY FOR TASK 5%%%%%%%
-ps = ps_3;
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-Kf = place(A, B, ps);
-sys_poles2 = eig(A - B*Kf);
-disp(sys_poles2) %Confirm stability
+
+% Gain and verification
+K_down = place(A_down, B_down, ps);
+eig_cl_down = eig(A_down - B_down*K_down)   % should equal poles (order may vary) 
+
+% ---------- UP equilibrium (q20 = pi) ----------
+c = cos(pi);
+M = [p1, p6*c; p6*c, p2];
+F = [p3, 0;    0,    p4];
+K = [0,  0;    0, p5*c];
+
+Minv = inv(M);
+A_up = [zeros(2), eye(2); -Minv*K, -Minv*F];
+B_up = [zeros(2,1); Minv*[1;0]];
+
+K_up = place(A_up, B_up, ps);
+eig_cl_up = eig(A_up - B_up*K_up) % should equal the poles given
